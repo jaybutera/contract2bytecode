@@ -13,28 +13,40 @@ let flatten = async (filepath) => {
    return await merger.processFile(filepath, true)
 }
 
-filepath = process.argv[2]
+const filepath = process.argv[2]
 if ( filepath == undefined ) {
    console.log("You didn't specify a path to a solidity file")
    process.exit(0)
 }
+// Extract file name from filepath
+const filename = filepath.match(/[\w-]+\.sol/).toString()
+
 flatten( process.argv[2] ).then( content => {
    //fs.writeFile('./tmp.sol', content, 
    // Write flattened file to compile
    //await write('./tmp.sol', content)
 
    // Compile
-   let input    = { 'TokenRegistry.sol' : content }
-   let compiled = solc.compile({ sources: input }, 1)
-   //let compiled = solc.compile(input, 1)
-   console.log(compiled.contracts)
+   //let input    = { 'TokenRegistry.sol' : content }
+   let input    = { [filename] : content }
+   let compiled = solc.compile({ sources: input })
+   //console.log(compiled.contracts)
+   console.log(compiled.errors)
 
-   let abi = JSON.parse( compiled.contracts['TokenRegistry.sol:TokenRegistry'].interface )
-   let tr = new web3.eth.Contract(
+   let contractKey = filename + ':' + filename.substring(0, filename.length-4)
+   //console.log( compiled.contracts )
+   const abi = compiled.contracts[ contractKey ].interface
+   console.log( abi )
+   /*
+   let contract = new web3.eth.Contract(
       abi,
       "0x0000000000000000000000000000000000000044", // Contract address
    )
-   console.log( compiled.contracts['TokenRegistry.sol:TokenRegistry'].bytecode )
+   */
+   let contract = new web3.eth.Contract(abi)
+   console.log( contract )
+   //console.log( compiled.contracts[ contractKey ].bytecode )
+
 })
 
 /*
