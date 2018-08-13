@@ -4,12 +4,13 @@ const web3 = new Web3(Web3.givenProvider || 'ws://some.local-or-remote.node:8546
 const solc = require('solc')
 const path = require('path')
 const Merger = require('./node_modules/sol-merger/lib/merger')
+const util = require('util')
+
+const write = util.promisify( fs.writeFile )
 
 let flatten = async (filepath) => {
    let merger = new Merger();
-   merger.processFile(filepath, true).then( res => {
-      console.log(res)
-   })
+   return await merger.processFile(filepath, true)
 }
 
 filepath = process.argv[2]
@@ -17,17 +18,34 @@ if ( filepath == undefined ) {
    console.log("You didn't specify a path to a solidity file")
    process.exit(0)
 }
-flatten( process.argv[2] )
+flatten( process.argv[2] ).then( content => {
+   //fs.writeFile('./tmp.sol', content, 
+   // Write flattened file to compile
+   //await write('./tmp.sol', content)
+
+   // Compile
+   let input    = { 'TokenRegistry.sol' : content }
+   let compiled = solc.compile({ sources: input }, 1)
+   //let compiled = solc.compile(input, 1)
+   console.log(compiled.contracts)
+
+   let abi = JSON.parse( compiled.contracts['TokenRegistry.sol:TokenRegistry'].interface )
+   let tr = new web3.eth.Contract(
+      abi,
+      "0x0000000000000000000000000000000000000044", // Contract address
+   )
+   console.log( compiled.contracts['TokenRegistry.sol:TokenRegistry'].bytecode )
+})
 
 /*
 let input = {
    'TokenRegistry.sol' : fs.readFileSync('../validator-contracts/contracts/TokenRegistry.sol'),
 }
 let compiled = solc.compile({ sources: input })
-
-let bsbJsonInterface = JSON.parse( fs.readFileSync('../validator-contracts/build/contracts/BurnableStakeBank.json') )
-let trJsonInterface  = JSON.parse( fs.readFileSync('./build/contracts/TokenRegistry.json') )
 */
+
+//let bsbJsonInterface = JSON.parse( fs.readFileSync('../validator-contracts/build/contracts/BurnableStakeBank.json') )
+//let trJsonInterface  = JSON.parse( fs.readFileSync('./build/contracts/TokenRegistry.json') )
 
 /*
 let bsb = new web3.eth.Contract(
